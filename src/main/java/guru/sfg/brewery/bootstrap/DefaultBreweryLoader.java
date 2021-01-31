@@ -17,12 +17,19 @@
 package guru.sfg.brewery.bootstrap;
 
 import guru.sfg.brewery.domain.*;
+import guru.sfg.brewery.domain.security.Authority;
+import guru.sfg.brewery.domain.security.User;
 import guru.sfg.brewery.repositories.*;
+import guru.sfg.brewery.repositories.security.AuthorityRepository;
+import guru.sfg.brewery.repositories.security.UserRepository;
 import guru.sfg.brewery.web.model.BeerStyleEnum;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
@@ -30,6 +37,7 @@ import java.util.UUID;
 /**
  * Created by jt on 2019-01-26.
  */
+@Slf4j
 @RequiredArgsConstructor
 @Component
 public class DefaultBreweryLoader implements CommandLineRunner {
@@ -44,11 +52,45 @@ public class DefaultBreweryLoader implements CommandLineRunner {
     private final BeerInventoryRepository beerInventoryRepository;
     private final BeerOrderRepository beerOrderRepository;
     private final CustomerRepository customerRepository;
+    private final AuthorityRepository authorityRepository;
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
 
     @Override
     public void run(String... args) {
         loadBreweryData();
         loadCustomerData();
+        loadAuthorityAndUserData();
+    }
+
+    private void loadAuthorityAndUserData() {
+        if ( authorityRepository.count() == 0 ) {
+            Authority authorityAdmin = Authority.builder().role("ADMIN").build();
+            Authority authorityUser = Authority.builder().role("USER").build();
+            Authority authorityCustomer = Authority.builder().role("CUSTOMER").build();
+            authorityRepository.save(authorityAdmin);
+            authorityRepository.save(authorityUser);
+            authorityRepository.save(authorityCustomer);
+            User spring = User.builder()
+                    .username("spring")
+                    .password(passwordEncoder.encode("guru"))
+                    .authority(authorityAdmin)
+                    .build();
+            User user = User.builder()
+                    .username("user")
+                    .password(passwordEncoder.encode("password"))
+                    .authority(authorityUser)
+                    .build();
+            User scott = User.builder()
+                    .username("scott")
+                    .password(passwordEncoder.encode("tiger"))
+                    .authority(authorityCustomer)
+                    .build();
+            userRepository.save(spring);
+            userRepository.save(user);
+            userRepository.save(scott);
+            log.debug("Users loaded: " + userRepository.count());
+        }
     }
 
     private void loadCustomerData() {
